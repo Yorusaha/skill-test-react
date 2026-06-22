@@ -1,0 +1,5 @@
+node_modules/
+vendor/
+.env
+output.css
+.DS_Store
