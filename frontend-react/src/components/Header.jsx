@@ -14,7 +14,7 @@ function Header({ searchQuery, setSearchQuery, cartCount, wishlistCount, setActi
             placeholder="Search games..."
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); if (e.target.value) setActivePage('categories'); }}
           />
           <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
         </div>

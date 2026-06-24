@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CartProvider, useCart } from './context/CartContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -25,17 +26,25 @@ const CAROUSEL_CONFIG = {
    '2': { x: 560,  w: 240, h: '72%', ry: -42, op: 0.28, zi: 1 },
 };
 
-function HeroCarousel() {
+const slideVariants = {
+  enter: (dir) => ({ x: dir > 0 ? '100%' : '-100%', opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (dir) => ({ x: dir > 0 ? '-60%' : '60%', opacity: 0 }),
+};
+
+function HeroCarousel({ setActivePage }) {
   const [idx, setIdx] = useState(0);
+  const [dir, setDir] = useState(1);
   const total = gamesData.length;
+  const { addToCart } = useCart();
 
   useEffect(() => {
-    const t = setInterval(() => setIdx(i => (i + 1) % total), 5000);
+    const t = setInterval(() => { setDir(1); setIdx(i => (i + 1) % total); }, 5000);
     return () => clearInterval(t);
   }, [total]);
 
-  const prev = () => setIdx(i => (i - 1 + total) % total);
-  const next = () => setIdx(i => (i + 1) % total);
+  const prev = () => { setDir(-1); setIdx(i => (i - 1 + total) % total); };
+  const next = () => { setDir(1); setIdx(i => (i + 1) % total); };
 
   return (
     <div style={{ position: 'relative', flexShrink: 0, height: 'calc(100vh - 520px)', minHeight: '220px', maxHeight: '440px', perspective: '1200px', perspectiveOrigin: '50% 50%' }}>
@@ -45,83 +54,110 @@ function HeroCarousel() {
         const game = gamesData[gameIdx];
         const cfg = CAROUSEL_CONFIG[pos.toString()];
         const isCenter = pos === 0;
-        const discountedPrice = (game.price * (1 - game.discount / 100)).toFixed(2);
 
         return (
           <div
-            key={`${pos}-${gameIdx}`}
+            key={pos}
             onClick={!isCenter ? (pos < 0 ? prev : next) : undefined}
             style={{
               position: 'absolute',
               left: '50%', top: '50%',
-              width: `${cfg.w}px`, height: `${cfg.h}px`,
+              width: `${cfg.w}px`, aspectRatio: '460 / 215',
               transform: `translate(calc(-50% + ${cfg.x}px), -50%) rotateY(${cfg.ry}deg)`,
               opacity: cfg.op, zIndex: cfg.zi,
-              transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: 'all 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
               borderRadius: '14px', overflow: 'hidden',
               cursor: isCenter ? 'default' : 'pointer',
               boxShadow: isCenter ? '0 24px 56px rgba(0,0,0,0.22)' : '0 8px 20px rgba(0,0,0,0.12)',
             }}
           >
-            <img src={game.image} alt={game.title}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <AnimatePresence custom={dir} initial={false} mode="sync">
+              <motion.img
+                key={game.id}
+                custom={dir}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+                src={game.image}
+                alt={game.title}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </AnimatePresence>
+
             <div style={{ position: 'absolute', inset: 0, background: isCenter ? 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)' : 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 60%)' }} />
 
             {isCenter ? (
-              <>
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '10px 16px 14px', color: 'white' }}>
-                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.65)', margin: '0 0 1px' }}>Lorem ipsum dolor sit amet consectetur adipiscing elit.</p>
-                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: '0 0 8px' }}>Odio non nobis, molestiae eum quod qui</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button style={{ background: '#b61722', color: 'white', border: 'none', borderRadius: '6px', padding: '5px 14px', fontWeight: 700, fontSize: '12px', cursor: 'pointer', letterSpacing: '0.04em' }}>
-                      ORDER NOW
-                    </button>
-                    <button style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)', flexShrink: 0 }}>
-                      <span className="material-symbols-outlined fill" style={{ fontSize: '16px' }}>play_arrow</span>
-                    </button>
-                  </div>
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '10px 16px 14px', color: 'white' }}>
+                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', margin: '0 0 8px', lineHeight: 1.5 }}>{game.description}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <motion.button
+                    onClick={() => { addToCart(game); setActivePage('bag'); }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    style={{ background: '#b61722', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 16px', fontWeight: 700, fontSize: '12px', cursor: 'pointer', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>add_shopping_cart</span>
+                    ADD TO CART
+                  </motion.button>
+                  <button style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)', flexShrink: 0 }}>
+                    <span className="material-symbols-outlined fill" style={{ fontSize: '16px' }}>play_arrow</span>
+                  </button>
                 </div>
-              </>
+              </div>
             ) : null}
           </div>
         );
       })}
 
-      {/* Prev arrow */}
-      <button onClick={prev}
-        style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', zIndex: 20, background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111827', boxShadow: '0 4px 14px rgba(0,0,0,0.18)', transition: 'all 200ms' }}>
+      <motion.button onClick={prev}
+        whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.92 }}
+        style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', zIndex: 20, background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111827', boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}>
         <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>chevron_left</span>
-      </button>
-      {/* Next arrow */}
-      <button onClick={next}
-        style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', zIndex: 20, background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111827', boxShadow: '0 4px 14px rgba(0,0,0,0.18)', transition: 'all 200ms' }}>
+      </motion.button>
+
+      <motion.button onClick={next}
+        whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.92 }}
+        style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', zIndex: 20, background: 'rgba(255,255,255,0.92)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#111827', boxShadow: '0 4px 14px rgba(0,0,0,0.18)' }}>
         <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>chevron_right</span>
-      </button>
+      </motion.button>
+
+      <div style={{ position: 'absolute', bottom: '-20px', left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
+        <span style={{ fontSize: '13px', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#111827' }}>
+          {gamesData[idx].title}
+        </span>
+      </div>
     </div>
   );
 }
 
 /* ─── Home Page ─── */
 function HomePage({ setActivePage }) {
-  const { addToCart, toggleWishlist, wishlistItems } = useCart();
+  const { addToCart, toggleWishlist, wishlistItems, cartItems } = useCart();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', padding: '16px 32px', gap: '16px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', padding: '16px 32px', gap: '10px', background: '#FAFAFA' }}>
 
-      <HeroCarousel />
+      <HeroCarousel setActivePage={setActivePage} />
 
       {/* Games on Promotion */}
-      <section style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <section style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
 
         {/* Section header */}
-        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#111827' }}>
-            GAMES ON PROMOTION
-          </h3>
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ width: '4px', height: '36px', background: '#b61722', borderRadius: '2px', flexShrink: 0 }} />
+            <div>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#111827', lineHeight: 1.1 }}>
+                GAMES ON PROMOTION
+              </h3>
+              <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#9CA3AF', fontWeight: 500 }}>Best deals updated daily</p>
+            </div>
+          </div>
           <button
             onClick={() => setActivePage('categories')}
             className="text-primary hover:opacity-75 transition-opacity"
-            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, paddingBottom: '2px' }}
           >
             View More Games
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_forward</span>
@@ -134,6 +170,7 @@ function HomePage({ setActivePage }) {
             const s = genreStyles[game.genre] || genreStyles.Action;
             const discountedPrice = (game.price * (1 - game.discount / 100)).toFixed(2);
             const isWishlisted = wishlistItems.some(g => g.id === game.id);
+            const isInCart = cartItems.some(item => item.game.id === game.id);
             const fullStars = Math.round(game.rating);
 
             return (
@@ -177,12 +214,14 @@ function HomePage({ setActivePage }) {
                     </span>
                     <span style={{ textDecoration: 'line-through', color: '#9CA3AF', fontSize: '12px', flexShrink: 0 }}>${game.price.toFixed(2)}</span>
                     <span style={{ fontWeight: 700, color: '#111827', fontSize: '14px', flex: 1 }}>${discountedPrice}</span>
-                    <button
+                    <motion.button
                       onClick={e => { e.stopPropagation(); addToCart(game); }}
-                      className={`${s.cart} transition-colors active:scale-95`}
-                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>shopping_bag</span>
-                    </button>
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className={isInCart ? '' : s.cart}
+                      style={{ width: '32px', height: '32px', borderRadius: '8px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, ...(isInCart && { background: '#16a34a', color: 'white' }) }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{isInCart ? 'check' : 'add_shopping_cart'}</span>
+                    </motion.button>
                   </div>
                 </div>
               </div>
@@ -204,7 +243,7 @@ function AppContent() {
     switch (activePage) {
       case 'bag':        return <Bag />;
       case 'wishlist':   return <Wishlist />;
-      case 'categories': return <Categories />;
+      case 'categories': return <Categories searchQuery={searchQuery} />;
       case 'library':    return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '12px' }}
           className="text-on-surface-variant">

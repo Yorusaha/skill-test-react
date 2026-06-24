@@ -10,16 +10,34 @@ const genreStyles = {
   Fighting:   { border: 'border-yellow-500', badge: 'bg-yellow-50 text-yellow-700', price: 'text-yellow-700', cart: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-500 hover:text-white' },
 };
 
-function Categories() {
+function Categories({ searchQuery = '' }) {
   const { addToCart, toggleWishlist, wishlistItems } = useCart();
+
+  const filtered = gamesData.filter(game =>
+    game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    game.genre.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '24px 32px', gap: '16px' }}>
-      <h2 className="font-headline-md text-headline-md font-bold text-on-background" style={{ flexShrink: 0 }}>
-        All Games
-      </h2>
+      <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 className="font-headline-md text-headline-md font-bold text-on-background">
+          All Games
+        </h2>
+        <span className="text-on-surface-variant font-label-sm" style={{ fontSize: '13px' }}>
+          {filtered.length} result{filtered.length !== 1 ? 's' : ''} found
+        </span>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}
+          className="text-on-surface-variant">
+          <span className="material-symbols-outlined" style={{ fontSize: '56px' }}>search_off</span>
+          <p style={{ fontSize: '15px', fontWeight: 600 }}>No games found for "{searchQuery}"</p>
+        </div>
+      ) : (
       <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', alignContent: 'start' }}>
-        {gamesData.map(game => {
+        {filtered.map(game => {
           const s = genreStyles[game.genre] || genreStyles.Action;
           const discountedPrice = (game.price * (1 - game.discount / 100)).toFixed(2);
           const isWishlisted = wishlistItems.some(g => g.id === game.id);
@@ -63,6 +81,7 @@ function Categories() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
